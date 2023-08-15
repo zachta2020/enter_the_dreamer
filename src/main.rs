@@ -5,11 +5,13 @@ use bevy::prelude::*;
 struct UpdateTimer(Timer);
 
 #[derive(Resource)]
-struct TimerCounter {i : u32}
+struct TimerCounter {
+    i: u32,
+}
 
 impl Default for TimerCounter {
     fn default() -> Self {
-        TimerCounter{i : 0}
+        TimerCounter { i: 0 }
     }
 }
 
@@ -33,7 +35,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 }
 
-fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, &mut Transform)>) {
+fn sprite_movement(
+    time: Res<Time>,
+    mut sprite_position: Query<(&mut Direction, &mut Transform)>,
+) {
     for (mut logo, mut transform) in &mut sprite_position {
         match *logo {
             Direction::Up => transform.translation.y += 150. * time.delta_seconds(),
@@ -48,7 +53,11 @@ fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, 
     }
 }
 
-fn timer_print(time: Res<Time>, mut timer: ResMut<UpdateTimer>, mut counter: ResMut<TimerCounter>) {
+fn timer_print(
+    time: Res<Time>,
+    mut timer: ResMut<UpdateTimer>,
+    mut counter: ResMut<TimerCounter>,
+) {
     if timer.0.tick(time.delta()).just_finished() {
         println!("Counter: {}", counter.i);
         counter.i += 1;
@@ -63,8 +72,8 @@ pub struct CounterPlugin;
 impl Plugin for CounterPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(UpdateTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
-        .insert_resource(TimerCounter{i:0})
-        .add_systems(Update, timer_print);
+            .insert_resource(TimerCounter { i: 0 })
+            .add_systems(Update, timer_print);
     }
 }
 
@@ -76,3 +85,4 @@ fn main() {
         .add_systems(Update, sprite_movement)
         .run();
 }
+

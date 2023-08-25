@@ -1,25 +1,30 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    window::{CursorGrabMode, PresentMode, WindowLevel},};
 
-//Resources
-#[derive(Resource)]
-struct UpdateTimer(Timer);
-
-#[derive(Resource)]
-struct TimerCounter {
-    i: u32,
-}
-
-impl Default for TimerCounter {
-    fn default() -> Self {
-        TimerCounter { i: 0 }
-    }
-}
+mod counter_plugin;
+use crate::counter_plugin::CounterPlugin;
 
 //Components
 #[derive(Component)]
-enum Direction {
+struct Player {
+
+}
+
+enum VerticalDirection {
     Up,
-    Down,
+    Down
+}
+
+enum HorizontalDirection {
+    Left,
+    Right
+}
+
+#[derive(Component)]
+struct Direction {
+    vertical: VerticalDirection,
+    horizontal: HorizontalDirection
 }
 
 //Systems
@@ -31,56 +36,57 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             transform: Transform::from_scale(Vec3::new(0.25, 0.25, 1.)),
             ..default()
         },
-        Direction::Up,
+        Direction {
+            vertical: VerticalDirection::Up,
+            horizontal: HorizontalDirection::Right    
+        },
     ));
 }
 
-fn sprite_movement(
+ fn sprite_movement(
     time: Res<Time>,
     mut sprite_position: Query<(&mut Direction, &mut Transform)>,
 ) {
     for (mut logo, mut transform) in &mut sprite_position {
-        match *logo {
-            Direction::Up => transform.translation.y += 150. * time.delta_seconds(),
-            Direction::Down => transform.translation.y -= 150. * time.delta_seconds(),
+        match logo.vertical {
+            VerticalDirection::Up => transform.translation.y += 150. * time.delta_seconds(),
+            VerticalDirection::Down => transform.translation.y -= 150. * time.delta_seconds()
+        }
+        match logo.horizontal {
+            HorizontalDirection::Left => transform.translation.x -= 150. * time.delta_seconds(),
+            HorizontalDirection::Right => transform.translation.x += 150. * time.delta_seconds()
         }
 
         if transform.translation.y > 200. {
-            *logo = Direction::Down;
+            logo.vertical = VerticalDirection::Down;
         } else if transform.translation.y < -200. {
-            *logo = Direction::Up;
+            logo.vertical = VerticalDirection::Up;
         }
-    }
-}
 
-fn timer_print(
-    time: Res<Time>,
-    mut timer: ResMut<UpdateTimer>,
-    mut counter: ResMut<TimerCounter>,
-) {
-    if timer.0.tick(time.delta()).just_finished() {
-        println!("Counter: {}", counter.i);
-        counter.i += 1;
-        if counter.i == 10 {
-            counter.i = 0;
+        if transform.translation.x > 300. {
+            logo.horizontal = HorizontalDirection::Left;
+        } else if transform.translation.x < -300. {
+            logo.horizontal = HorizontalDirection::Right;
         }
-    }
-}
-
-//Plugins
-pub struct CounterPlugin;
-impl Plugin for CounterPlugin {
-    fn build(&self, app: &mut App) {
-        app.insert_resource(UpdateTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
-            .insert_resource(TimerCounter { i: 0 })
-            .add_systems(Update, timer_print);
     }
 }
 
 //Main
 fn main() {
+    let (width, height) = (800., 600.);
+
     App::new()
-        .add_plugins((DefaultPlugins, CounterPlugin))
+        .add_plugins((DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window{
+                title: "Enter the Dreamer Sandbox".into(),
+                resolution: (width, height).into(),
+                present_mode: PresentMode::AutoVsync,
+                window_level: WindowLevel::AlwaysOnTop,
+                ..default()
+            }),
+            ..default()
+        }), 
+        CounterPlugin))
         .add_systems(Startup, setup)
         .add_systems(Update, sprite_movement)
         .run();

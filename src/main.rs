@@ -1,94 +1,193 @@
 use bevy::{
     prelude::*,
-    window::{CursorGrabMode, PresentMode, WindowLevel},};
+    window::{PresentMode, WindowLevel},};
+use bevy_rapier2d::prelude::*;
 
 mod counter_plugin;
 use crate::counter_plugin::CounterPlugin;
 
+const WIDTH: f32 = 640.;
+const HEIGHT: f32 = 400.;
+const THICKNESS: f32 = 20.;
+
+const PLAYER_VELOCITY_X: f32 = 200.0;
+const PLAYER_VELOCITY_Y_UP: f32 = 450.0;
+const PLAYER_VELOCITY_Y_DOWN: f32 = 550.0;
+
+const MAX_JUMP_HEIGHT: f32 = 100.0;
+
 //Components
 #[derive(Component)]
-struct Player {
-
-}
-
-enum VerticalDirection {
-    Up,
-    Down
-}
-
-enum HorizontalDirection {
-    Left,
-    Right
-}
+struct Player;
 
 #[derive(Component)]
-struct Direction {
-    vertical: VerticalDirection,
-    horizontal: HorizontalDirection
+struct Jump (f32);
+
+//Bundles
+#[derive(Bundle)]
+struct PlatformBundle {
+    sprite_bundle: SpriteBundle,
+    body: RigidBody,
+    collider: Collider,
+}
+
+impl PlatformBundle {
+    fn new(x: f32, y: f32, scale: Vec3) -> Self {
+        Self {
+            sprite_bundle: SpriteBundle {
+                sprite: Sprite {
+                    color: Color::GRAY,
+                    ..Default::default()
+                },
+                transform: Transform {
+                    translation: Vec3::new(x, y, 0.0),
+                    scale,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            body: RigidBody::Fixed,
+            collider: Collider::cuboid(0.5, 0.5),
+        }
+    }
 }
 
 //Systems
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("icon.png"),
-            transform: Transform::from_scale(Vec3::new(0.25, 0.25, 1.)),
+
+    //player
+    commands.spawn(SpriteBundle {
+            sprite: Sprite {
+                color: Color::WHITE,
+                ..default()
+            },
+            transform: Transform {
+                translation: Vec3 { x: 0.0, y: -100., z: 0.0 },
+                scale: Vec3::new(20., 20., 1.),
+                ..default()
+            },
             ..default()
-        },
-        Direction {
-            vertical: VerticalDirection::Up,
-            horizontal: HorizontalDirection::Right    
-        },
-    ));
+        })
+            .insert(RigidBody::KinematicPositionBased)
+            .insert(Collider::cuboid(0.5, 0.5))
+            .insert(KinematicCharacterController::default())
+            .insert(Player);
+
+    //floor
+    commands.spawn(PlatformBundle::new(0.0, HEIGHT / -2.0 + THICKNESS / 2.0 ,Vec3::new(WIDTH, THICKNESS, 1.0)));
+
+    //ceiling
+    commands.spawn(PlatformBundle::new(0.0, HEIGHT / 2.0 - THICKNESS / 2.0, Vec3::new(WIDTH, THICKNESS, 1.0)));
+
+    //walls
+    commands.spawn(PlatformBundle::new(WIDTH / -2.0 + THICKNESS / 2.0, 0.0, Vec3::new(THICKNESS, HEIGHT - THICKNESS * 2.0, 1.0)));
+    commands.spawn(PlatformBundle::new(WIDTH / 2.0 - THICKNESS / 2.0, 0.0, Vec3::new(THICKNESS, HEIGHT - THICKNESS * 2.0, 1.0)));
 }
 
- fn sprite_movement(
+fn movement(
+    input: Res<Input<KeyCode>>,
     time: Res<Time>,
-    mut sprite_position: Query<(&mut Direction, &mut Transform)>,
+    mut query: Query<&mut KinematicCharacterController>,
 ) {
-    for (mut logo, mut transform) in &mut sprite_position {
-        match logo.vertical {
-            VerticalDirection::Up => transform.translation.y += 150. * time.delta_seconds(),
-            VerticalDirection::Down => transform.translation.y -= 150. * time.delta_seconds()
-        }
-        match logo.horizontal {
-            HorizontalDirection::Left => transform.translation.x -= 150. * time.delta_seconds(),
-            HorizontalDirection::Right => transform.translation.x += 150. * time.delta_seconds()
-        }
+    let mut player = query.single_mut();
 
-        if transform.translation.y > 200. {
-            logo.vertical = VerticalDirection::Down;
-        } else if transform.translation.y < -200. {
-            logo.vertical = VerticalDirection::Up;
-        }
+    let mut movement = 0.0;
 
-        if transform.translation.x > 300. {
-            logo.horizontal = HorizontalDirection::Left;
-        } else if transform.translation.x < -300. {
-            logo.horizontal = HorizontalDirection::Right;
-        }
+    if input.pressed(KeyCode::Right) {
+        movement += time.delta_seconds() * PLAYER_VELOCITY_X;
+    }
+
+    if input.pressed(KeyCode::Left) {
+        movement += time.delta_seconds() * PLAYER_VELOCITY_X * -1.0;
+    }
+
+    match player.translation {
+        Some(vec) => player.translation = Some(Vec2::new(movement, vec.y)), // update if it already exists
+        None => player.translation = Some(Vec2::new(movement, 0.0)),
+    }
+}
+
+fn jump(
+    input: Res<Input<KeyCode>>,
+    mut commands: Commands,
+    query: Query<
+        (Entity, &KinematicCharacterControllerOutput),
+        (With<KinematicCharacterController>, Without<Jump>),
+    >,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let (player, output) = query.single();
+
+    if input.pressed(KeyCode::Space) && output.grounded {
+        commands.entity(player).insert(Jump(0.0));
+    }
+}
+
+fn rise(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut KinematicCharacterController, &mut Jump)>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let (entity, mut player, mut jump) = query.single_mut();
+
+    let mut movement = time.delta().as_secs_f32() * PLAYER_VELOCITY_Y_UP;
+
+    if movement + jump.0 >= MAX_JUMP_HEIGHT {
+        movement = MAX_JUMP_HEIGHT - jump.0;
+        commands.entity(entity).remove::<Jump>();
+    }
+
+    jump.0 += movement;
+
+    match player.translation {
+        Some(vec) => player.translation = Some(Vec2::new(vec.x, movement)),
+        None => player.translation = Some(Vec2::new(0.0, movement)),
+    }
+}
+
+fn fall(time: Res<Time>, mut query: Query<&mut KinematicCharacterController, Without<Jump>>) {
+    if query.is_empty() {
+        return;
+    }
+
+    let mut player = query.single_mut();
+
+    let movement = time.delta().as_secs_f32() * PLAYER_VELOCITY_Y_DOWN * -1.0;
+
+    match player.translation {
+        Some(vec) => player.translation = Some(Vec2::new(vec.x, movement)),
+        None => player.translation = Some(Vec2::new(0.0, movement)),
     }
 }
 
 //Main
 fn main() {
-    let (width, height) = (800., 600.);
-
     App::new()
         .add_plugins((DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window{
                 title: "Enter the Dreamer Sandbox".into(),
-                resolution: (width, height).into(),
+                resolution: (WIDTH, HEIGHT).into(),
                 present_mode: PresentMode::AutoVsync,
                 window_level: WindowLevel::AlwaysOnTop,
+                resizable: false,
                 ..default()
             }),
             ..default()
-        }), 
+        }),
+        RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.), 
+        //RapierDebugRenderPlugin::default(),
         CounterPlugin))
+        .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04))) //changes background color
         .add_systems(Startup, setup)
-        .add_systems(Update, sprite_movement)
+        .add_systems(Update, (movement, jump, rise, fall))
         .run();
 }
 

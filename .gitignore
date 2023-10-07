@@ -1,2 +1,4 @@
 /target
 .cargo/.xwin-cache
+src/movement.rs
+src/counter_plugin.rs

@@ -113,6 +113,7 @@ pub fn horizontal_dash (
         if horizontal_mover.is_dashing {
             if !horizontal_mover.dashing_timer.just_finished() {
                 velocity.linvel.x = direction * horizontal_mover.dash_power * time.delta_seconds();
+                velocity.linvel.y = 0.0;
                 horizontal_mover.dashing_timer.tick(time.delta());
             } else {
                 gravity_scale.0 = horizontal_mover.predash_gravity;
@@ -123,7 +124,8 @@ pub fn horizontal_dash (
         }
         //after the dash
         if !horizontal_mover.can_dash{
-            while !horizontal_mover.dash_cooldown_timer.just_finished() {
+
+            if !horizontal_mover.dash_cooldown_timer.just_finished() {
                 horizontal_mover.dash_cooldown_timer.tick(time.delta());
                 //println!("COOLING DOWN DASH");
             }

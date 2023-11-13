@@ -4,13 +4,30 @@ use bevy_ecs_ldtk::prelude::*;
 
 use std::collections::HashSet;
 
-pub const DEFAULT_JUMP_COUNT: i32 = 1;
-pub const DEFAULT_HORIZONTAL_WALK: f32 = 200.;
-pub const DEFAULT_VERTICAL_JUMP: f32 = 500.;
-pub const DEFAULT_HORIZONTAL_RUN: f32 = 300.;
 
-#[derive(Component)]
+pub const DEFAULT_HORIZONTAL_WALK: f32 = 10000.;
+pub const DEFAULT_HORIZONTAL_RUN: f32 = 15000.;
+pub const DEFAULT_HORIZONTAL_DASH: f32 = 30000.;
+
+pub const DEFAULT_JUMP_COUNT: i32 = 1;
+pub const DEFAULT_VERTICAL_JUMP: f32 = 30000.;
+
+#[derive(Component, Default)]
 pub struct PrimaryCamera;
+
+/* #[derive(Component, Default)]
+pub struct CameraCoords {
+    pub x: f32,
+    pub y: f32,
+} */
+
+#[derive(Bundle, Default)]
+pub struct PrimaryCameraBundle {
+    pub camera_2d: Camera2dBundle,
+    pub primary_camera: PrimaryCamera
+}
+
+
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Component)]
 pub struct Player;
@@ -24,6 +41,7 @@ pub struct ColliderBundle {
     pub gravity_scale: GravityScale,
     pub friction: Friction,
     pub density: ColliderMassProperties,
+    pub ccd: Ccd,
 }
 
 impl From<&EntityInstance> for ColliderBundle {
@@ -39,6 +57,7 @@ impl From<&EntityInstance> for ColliderBundle {
                     combine_rule: CoefficientCombineRule::Min,
                 },
                 rotation_constraints,
+                ccd: Ccd::enabled(),
                 ..default()
             },
             _ => ColliderBundle::default(),
@@ -55,9 +74,9 @@ pub struct PlayerBundle {
     pub player: Player,
     #[worldly]
     pub worldly: Worldly,
+    pub movement_bundle: MovementBundle,
     pub ground_detection: GroundDetection,
     pub wall_detection: WallDetection,
-    pub movement_config: MovementConfig,
 
     // The whole EntityInstance can be stored directly as an EntityInstance component
     #[from_entity_instance]
@@ -72,23 +91,67 @@ pub struct WallBundle {
     wall: Wall,
 }
 
-#[derive(Clone, Component)]
-pub struct MovementConfig {
-    pub jump_count: i32,
-    pub max_jump_count: i32,
-    pub walk_speed: f32,
-    pub jump_speed: f32,
-    pub running_speed: f32,
+#[derive(Clone, PartialEq)]
+pub enum PlayerDirection {
+    Left,
+    Right,
+}
+#[derive(Clone, Bundle, Default)]
+pub struct MovementBundle {
+    pub horizontal_mover: HorizontalMover,
+    pub vertical_mover: VerticalMover,
 }
 
-impl Default for MovementConfig {
+#[derive(Clone, Component)]
+pub struct HorizontalMover {
+    pub walk_speed: f32,
+    pub run_speed: f32,
+    pub current_speed: f32,
+
+    pub can_dash: bool,
+    pub is_dashing: bool,
+    pub dash_power: f32,
+    pub dashing_timer: Timer,
+    pub dash_cooldown_timer: Timer,
+
+    pub predash_gravity: f32,
+
+    pub facing_direction: PlayerDirection,
+}
+
+impl Default for HorizontalMover {
     fn default() -> Self {
-     MovementConfig {
+        HorizontalMover {
+            walk_speed: DEFAULT_HORIZONTAL_WALK,
+            run_speed: DEFAULT_HORIZONTAL_RUN,
+            current_speed: 0.0,
+
+            can_dash: true,
+            is_dashing: false,
+            dash_power: DEFAULT_HORIZONTAL_DASH,
+            dashing_timer: Timer::from_seconds(0.2, TimerMode::Once),
+            dash_cooldown_timer: Timer::from_seconds(1.0, TimerMode::Once),
+
+            predash_gravity: 0.0,
+
+            facing_direction: PlayerDirection::Right,
+        }
+    }
+}
+
+#[derive(Clone, Component)]
+pub struct VerticalMover {
+    pub jump_speed: f32,
+    pub jump_count: i32,
+    pub max_jump_count: i32,
+}
+
+impl Default for VerticalMover {
+    fn default() -> Self {
+        VerticalMover { 
+            jump_speed: DEFAULT_VERTICAL_JUMP, 
             jump_count: DEFAULT_JUMP_COUNT,
             max_jump_count: DEFAULT_JUMP_COUNT,
-            walk_speed: DEFAULT_HORIZONTAL_WALK,
-            jump_speed: DEFAULT_VERTICAL_JUMP,
-            running_speed: DEFAULT_HORIZONTAL_RUN,
         }
     }
 }

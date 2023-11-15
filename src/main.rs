@@ -3,6 +3,7 @@ use bevy::{
     window::{PresentMode, WindowLevel},};
 use bevy_rapier2d::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
+use systems::movement::set_player_gravity;
 
 //use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 
@@ -22,6 +23,7 @@ fn main() {
                 present_mode: PresentMode::AutoVsync,
                 window_level: WindowLevel::AlwaysOnTop,
                 resizable: false,
+                focused: true,
                 ..default()
             }),
             ..default()
@@ -46,14 +48,15 @@ fn main() {
         .add_systems(Update, systems::detection::wall_detection)
         .add_systems(Update, systems::detection::update_on_wall)
         .add_systems(Update, systems::camera::player_camera)
-        .add_systems(FixedUpdate, systems::movement::horizontal_movement_no_acc)
+        .add_systems(FixedUpdate, systems::movement::horizontal_movement)
         .add_systems(Update, systems::movement::horizontal_dash)
-        .add_systems(FixedUpdate, systems::movement::vertical_jump)
+        .add_systems(Update, systems::movement::vertical_jump)
         //.add_systems(Update, systems::movement::wall_jump)
-        .add_systems(FixedUpdate, systems::movement::refresh_jumps)
+        .add_systems(Update, systems::movement::refresh_jumps)
+        .add_systems(Update, set_player_gravity)
         .register_ldtk_int_cell::<components::WallBundle>(1)
         .register_ldtk_entity::<components::PlayerBundle>("Player")
-        .insert_resource(LevelSelection::Index(0))
+        .insert_resource(LevelSelection::Index(1))
         .run();
 }
 

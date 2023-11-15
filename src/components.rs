@@ -5,12 +5,12 @@ use bevy_ecs_ldtk::prelude::*;
 use std::collections::HashSet;
 
 
-pub const DEFAULT_HORIZONTAL_WALK: f32 = 10000.;
+/* pub const DEFAULT_HORIZONTAL_WALK: f32 = 10000.;
 pub const DEFAULT_HORIZONTAL_RUN: f32 = 15000.;
-pub const DEFAULT_HORIZONTAL_DASH: f32 = 30000.;
+pub const DEFAULT_HORIZONTAL_DASH: f32 = 30000.; */
 
-pub const DEFAULT_JUMP_COUNT: i32 = 1;
-pub const DEFAULT_VERTICAL_JUMP: f32 = 30000.;
+/* pub const DEFAULT_JUMP_COUNT: i32 = 1;
+pub const DEFAULT_VERTICAL_JUMP: f32 = 30000.; */
 
 #[derive(Component, Default)]
 pub struct PrimaryCamera;
@@ -105,7 +105,20 @@ pub struct MovementBundle {
 #[derive(Clone, Component)]
 pub struct HorizontalMover {
     pub walk_speed: f32,
+    pub walk_acc: f32,
+    pub walk_dec: f32,
+    pub walk_turn: f32,
+
     pub run_speed: f32,
+    pub run_acc: f32,
+    pub run_dec: f32,
+    pub run_turn: f32,
+
+    pub air_speed: f32,
+    pub air_acc: f32,
+    pub air_dec: f32,
+    pub air_turn: f32,
+
     pub current_speed: f32,
 
     pub can_dash: bool,
@@ -114,25 +127,34 @@ pub struct HorizontalMover {
     pub dashing_timer: Timer,
     pub dash_cooldown_timer: Timer,
 
-    pub predash_gravity: f32,
-
     pub facing_direction: PlayerDirection,
 }
 
 impl Default for HorizontalMover {
     fn default() -> Self {
         HorizontalMover {
-            walk_speed: DEFAULT_HORIZONTAL_WALK,
-            run_speed: DEFAULT_HORIZONTAL_RUN,
+            walk_speed: 10000.,
+            walk_acc: 1000.0,
+            walk_dec: 1000.0,
+            walk_turn: 1000.0,
+
+            run_speed: 15000.,
+            run_acc: 500.0,
+            run_dec: 1000.0,
+            run_turn: 800.0,
+
+            air_speed: 10000.,
+            air_acc: 1000.0,
+            air_dec: 1000.0,
+            air_turn: 1000.0,
+
             current_speed: 0.0,
 
             can_dash: true,
             is_dashing: false,
-            dash_power: DEFAULT_HORIZONTAL_DASH,
+            dash_power: 30000.,
             dashing_timer: Timer::from_seconds(0.2, TimerMode::Once),
             dash_cooldown_timer: Timer::from_seconds(1.0, TimerMode::Once),
-
-            predash_gravity: 0.0,
 
             facing_direction: PlayerDirection::Right,
         }
@@ -141,7 +163,10 @@ impl Default for HorizontalMover {
 
 #[derive(Clone, Component)]
 pub struct VerticalMover {
-    pub jump_speed: f32,
+    pub jump_height: f32,
+    pub time_to_jump_apex: f32,
+    pub down_grav_mult: f32,
+
     pub jump_count: i32,
     pub max_jump_count: i32,
 }
@@ -149,9 +174,13 @@ pub struct VerticalMover {
 impl Default for VerticalMover {
     fn default() -> Self {
         VerticalMover { 
-            jump_speed: DEFAULT_VERTICAL_JUMP, 
-            jump_count: DEFAULT_JUMP_COUNT,
-            max_jump_count: DEFAULT_JUMP_COUNT,
+            //old height 225000
+            jump_height: 225000.,
+            time_to_jump_apex: 20.,
+            down_grav_mult: 1.5,
+
+            jump_count: 2,
+            max_jump_count: 2,
         }
     }
 }

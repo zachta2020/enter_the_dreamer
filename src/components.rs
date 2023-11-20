@@ -91,11 +91,22 @@ pub struct WallBundle {
     wall: Wall,
 }
 
-#[derive(Clone, PartialEq)]
-pub enum PlayerDirection {
+#[derive(Clone, Debug, PartialEq)]
+pub enum FacingDirection {
     Left,
     Right,
 }
+
+impl FacingDirection {
+    pub fn get_opposite(&self) -> FacingDirection {
+        if *self == FacingDirection::Left {
+            FacingDirection::Right
+        } else {
+            FacingDirection::Left
+        }
+    }
+}
+
 #[derive(Clone, Bundle, Default)]
 pub struct MovementBundle {
     pub horizontal_mover: HorizontalMover,
@@ -104,6 +115,8 @@ pub struct MovementBundle {
 
 #[derive(Clone, Component)]
 pub struct HorizontalMover {
+    pub is_horizontal_moving: bool,
+
     pub walk_speed: f32,
     pub walk_acc: f32,
     pub walk_dec: f32,
@@ -127,12 +140,14 @@ pub struct HorizontalMover {
     pub dashing_timer: Timer,
     pub dash_cooldown_timer: Timer,
 
-    pub facing_direction: PlayerDirection,
+    pub facing_direction: FacingDirection,
 }
 
 impl Default for HorizontalMover {
     fn default() -> Self {
         HorizontalMover {
+            is_horizontal_moving: false,
+
             walk_speed: 10000.,
             walk_acc: 1000.0,
             walk_dec: 1000.0,
@@ -154,9 +169,9 @@ impl Default for HorizontalMover {
             is_dashing: false,
             dash_power: 30000.,
             dashing_timer: Timer::from_seconds(0.2, TimerMode::Once),
-            dash_cooldown_timer: Timer::from_seconds(1.0, TimerMode::Once),
+            dash_cooldown_timer: Timer::from_seconds(0.5, TimerMode::Once),
 
-            facing_direction: PlayerDirection::Right,
+            facing_direction: FacingDirection::Left,
         }
     }
 }
@@ -169,18 +184,52 @@ pub struct VerticalMover {
 
     pub jump_count: i32,
     pub max_jump_count: i32,
+
+    pub is_wall_sliding: bool,
+    pub wall_slide_speed: f32,
+    pub in_wall_slide_coyote_time: bool,
+    pub wall_slide_coyote_timer: Timer,
+
+    pub can_wall_jump: bool,
+    pub is_wall_jumping: bool,
+    pub wall_jump_direction: FacingDirection,
+    //pub wall_jump_coyote_timer: Timer,
+    pub wall_jump_timer: Timer,
+    pub wall_jump_cooldown_timer: Timer,
+
+    //pub temp_counter: i32,
 }
+
+/* pub const WALL_SLIDE_COYOTE_TIME: f32 = 0.01;
+pub const WALL_JUMP_COYOTE_TIME: f32 = 0.5;
+pub const WALL_JUMP_TIME: f32 = 0.2; */
+//pub const TEST_TIME: f32 = 0.5;
 
 impl Default for VerticalMover {
     fn default() -> Self {
+        const JUMPS: i32 = 1;
         VerticalMover { 
-            //old height 225000
+            //height 225000 clears 3 blocks
             jump_height: 225000.,
             time_to_jump_apex: 20.,
             down_grav_mult: 1.5,
 
-            jump_count: 2,
-            max_jump_count: 2,
+            jump_count: JUMPS,
+            max_jump_count: JUMPS,
+
+            is_wall_sliding: false,
+            wall_slide_speed: 10.,
+            in_wall_slide_coyote_time: false,
+            wall_slide_coyote_timer: Timer::from_seconds(0.2, TimerMode::Once),
+
+            can_wall_jump: true,
+            is_wall_jumping: false,
+            wall_jump_direction: FacingDirection::Left,
+            wall_jump_timer: Timer::from_seconds(0.5, TimerMode::Once),
+            wall_jump_cooldown_timer: Timer::from_seconds(0.5, TimerMode::Once),
+
+
+            //temp_counter: 0,
         }
     }
 }

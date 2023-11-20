@@ -7,17 +7,6 @@ use crate::components::*;
 use std::collections::{HashMap, HashSet};
 
 pub fn basic_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    /* commands.spawn((
-        /* Camera2dBundle {
-            transform : Transform::from_xyz(368./2., 256./2., 1000.0 - 0.1),
-            projection : OrthographicProjection {
-                scaling_mode : bevy::render::camera::ScalingMode::Fixed { width: 368., height: 256. },
-                ..default()
-            },
-            ..default()
-        },
-        PrimaryCamera)); */ */
-
     commands.spawn(PrimaryCameraBundle::default());
 
     commands.spawn(LdtkWorldBundle {

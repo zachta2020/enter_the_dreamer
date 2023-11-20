@@ -3,7 +3,6 @@ use bevy::{
     window::{PresentMode, WindowLevel},};
 use bevy_rapier2d::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
-use systems::movement::set_player_gravity;
 
 //use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 
@@ -30,7 +29,7 @@ fn main() {
         }).set(ImagePlugin::default_nearest()),
         RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.), 
         LdtkPlugin,
-        //RapierDebugRenderPlugin::default(),
+        RapierDebugRenderPlugin::default(),
         //LogDiagnosticsPlugin::default(),
         //FrameTimeDiagnosticsPlugin::default(),
         ))
@@ -39,24 +38,32 @@ fn main() {
             gravity: Vec2::new(0.0, -2000.0),
             ..Default::default()
         })
+        //Set Up
         .add_systems(Startup, systems::setup::basic_setup)
         .add_systems(Update, systems::setup::spawn_wall_collision)
         .add_systems(Update, systems::setup::spawn_ground_sensor)
         .add_systems(Update, systems::setup::spawn_wall_sensor)
+
+        //Wall/Ground Detection
         .add_systems(Update, systems::detection::ground_detection)
         .add_systems(Update, systems::detection::update_on_ground)
         .add_systems(Update, systems::detection::wall_detection)
         .add_systems(Update, systems::detection::update_on_wall)
+
+        //camera
         .add_systems(Update, systems::camera::player_camera)
-        .add_systems(FixedUpdate, systems::movement::horizontal_movement)
+
+        //Movement
+        .add_systems(Update, systems::movement::horizontal_movement_no_acc)
         .add_systems(Update, systems::movement::horizontal_dash)
         .add_systems(Update, systems::movement::vertical_jump)
-        //.add_systems(Update, systems::movement::wall_jump)
+        .add_systems(Update, systems::movement::wall_jump)
         .add_systems(Update, systems::movement::refresh_jumps)
-        .add_systems(Update, set_player_gravity)
+        .add_systems(Update, systems::movement::set_player_gravity)
+        .add_systems(Update, systems::movement::wall_slide)
+
         .register_ldtk_int_cell::<components::WallBundle>(1)
         .register_ldtk_entity::<components::PlayerBundle>("Player")
         .insert_resource(LevelSelection::Index(1))
         .run();
 }
-

@@ -1,26 +1,31 @@
 # Enter the Dreamer
 
-Once, there was a boy that was shown the way to the world beyond sleep, the Dreaming Realms, by his friends. Now, he explores the world of dreams as Enter the Dreamer, beholding its many wonders and mysteries while fighting against the sinister Nightmare Court.
+Once, there was a boy that was shown the way to the world beyond sleep, the Dreaming Realms, by his friends. Now, he explores the world of dreams as Enter the Dreamer, exploring its many wonders and mysteries while fighting against the sinister Nightmare Court.
 
-The theme of this set of stages is a war in the Chesslands, a chessboard brought to life with white and black pieces in eternal conflict. The tide of war has turned, and the black pieces have the upper hand after mysteriously becoming stronger and more ruthless. The White King calls upon Enter to make his way across the board, and find out what happened to the Black Kingdom.
+In this dream, Enter finds himself in the Chesslands, a chessboard brought to life with white and black pieces locked in eternal conflict. The tide of war has turned, and the black pieces have the upper hand after mysteriously becoming stronger and more ruthless. The White King calls upon Enter to make his way across the board, and find out what has changed in the Black Kingdom.
 
 ## Roadmap
 ### Character Abilites
-- [ ] Horizontal Movement
+- [X] Horizontal Movement
     - [X] Walking
-    - [ ] Running
-    - [ ] Dash
-- [ ] Jumping
+    - [X] Running
+    - [X] Dash
+- [X] Jumping
     - [X] Basic Jump
-    - [ ] Wall Jumping
+    - [X] Wall Jumping
+- [X] Wall Sliding
 
 Parameters will still need fine-tuning
 
 ### Enemies
-- [ ] Pawn
-- [ ] Rook
-- [ ] Knight
-- [ ] Bishop
+- [ ] Hit Detection
+    - [ ] Health
+    - [ ] Respawn Points
+- [ ] Enemy Types
+    - [ ] Pawn
+    - [ ] Rook
+    - [ ] Knight
+    - [ ] Bishop
 
 ### Stages
 - [ ] Sandbox/Playground to experiment in

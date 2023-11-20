@@ -5,7 +5,24 @@ Once, there was a boy that was shown the way to the world beyond sleep, the Drea
 In this dream, Enter finds himself in the Chesslands, a chessboard brought to life with white and black pieces locked in eternal conflict. The tide of war has turned, and the black pieces have the upper hand after mysteriously becoming stronger and more ruthless. The White King calls upon Enter to make his way across the board, and find out what has changed in the Black Kingdom.
 
 ## Roadmap
-### Character Abilites
+### Player Character
+#### Character Graphics and Audio
+- [ ] Graphics
+    - [ ] Idle
+    - [ ] Walking
+    - [ ] Running
+    - [ ] Dashing
+    - [ ] Jumping
+    - [ ] Wall Sliding
+    - [ ] Wall Jumping
+- [ ] Audio
+    - [ ] Walking/Running
+    - [ ] Jumping/Wall Jumping
+    - [ ] Landing
+    - [ ] Wall Sliding
+    - [ ] Got Hit
+
+#### Character Abilites
 - [X] Horizontal Movement
     - [X] Walking
     - [X] Running
@@ -18,9 +35,10 @@ In this dream, Enter finds himself in the Chesslands, a chessboard brought to li
 Parameters will still need fine-tuning
 
 ### Enemies
-- [ ] Hit Detection
-    - [ ] Health
-    - [ ] Respawn Points
+- [ ] Enemy Interaction
+    - [ ] Hit Detection
+    - [ ] Player Health
+    - [ ] Player Respawn Points
 - [ ] Enemy Types
     - [ ] Pawn
     - [ ] Rook

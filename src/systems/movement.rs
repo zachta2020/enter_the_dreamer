@@ -210,7 +210,7 @@ pub fn wall_jump (
             let jump_power = (-2. * rapier_config.gravity.y * gravity_scale.0 * vertical_mover.jump_height).sqrt();
             velocity.linvel.y = jump_power * time.delta_seconds();
             vertical_mover.jump_count = 0;
-            println!("WALL JUMP");
+            //println!("WALL JUMP");
         }
         //while wall jumping
         if vertical_mover.is_wall_jumping { 
@@ -227,7 +227,7 @@ pub fn wall_jump (
                 vertical_mover.is_wall_jumping = false;
                 vertical_mover.wall_jump_cooldown_timer.reset();
 
-                println!("WALL JUMP OVER");
+                //println!("WALL JUMP OVER");
             }
         }
         //cooldown from wall jumping
@@ -236,7 +236,7 @@ pub fn wall_jump (
                 vertical_mover.wall_jump_cooldown_timer.tick(time.delta());
             } else {
                 vertical_mover.can_wall_jump = true;
-                println!("WALL JUMP COOLDOWN OVER");
+                //println!("WALL JUMP COOLDOWN OVER");
             }
         }
 
@@ -248,17 +248,19 @@ pub fn wall_jump (
             vertical_mover.is_wall_jumping = false;
             vertical_mover.wall_jump_cooldown_timer.reset();
 
-            println!("WALL JUMP OVER");
+            //println!("WALL JUMP OVER");
         }
     }
 }
 
-pub fn refresh_jumps(
+pub fn set_jumps(
     mut query: Query<(&mut VerticalMover, &Velocity, &GroundDetection), With<Player>>,
 ) {
     for (mut vertical_mover, velocity, ground_detection) in &mut query {
         if ground_detection.on_ground && velocity.linvel.y == 0.0 {
             vertical_mover.jump_count = vertical_mover.max_jump_count;
+        } else if !ground_detection.on_ground && vertical_mover.jump_count == vertical_mover.max_jump_count {
+            vertical_mover.jump_count -= 1;
         }
     }
 }

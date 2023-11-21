@@ -4,7 +4,7 @@ use bevy::{
 use bevy_rapier2d::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
-//use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 
 mod components;
 mod systems;
@@ -30,8 +30,8 @@ fn main() {
         RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.), 
         LdtkPlugin,
         RapierDebugRenderPlugin::default(),
-        //LogDiagnosticsPlugin::default(),
-        //FrameTimeDiagnosticsPlugin::default(),
+        LogDiagnosticsPlugin::default(),
+        FrameTimeDiagnosticsPlugin::default(),
         ))
         .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04))) //changes background color
         .insert_resource(RapierConfiguration {
@@ -58,12 +58,12 @@ fn main() {
         .add_systems(Update, systems::movement::horizontal_dash)
         .add_systems(Update, systems::movement::vertical_jump)
         .add_systems(Update, systems::movement::wall_jump)
-        .add_systems(Update, systems::movement::refresh_jumps)
+        .add_systems(Update, systems::movement::set_jumps)
         .add_systems(Update, systems::movement::set_player_gravity)
         .add_systems(Update, systems::movement::wall_slide)
 
         .register_ldtk_int_cell::<components::WallBundle>(1)
         .register_ldtk_entity::<components::PlayerBundle>("Player")
-        .insert_resource(LevelSelection::Index(1))
+        .insert_resource(LevelSelection::Index(0))
         .run();
 }

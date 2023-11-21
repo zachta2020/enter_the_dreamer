@@ -226,7 +226,7 @@ impl Default for VerticalMover {
             is_wall_jumping: false,
             wall_jump_direction: FacingDirection::Left,
             wall_jump_timer: Timer::from_seconds(0.5, TimerMode::Once),
-            wall_jump_cooldown_timer: Timer::from_seconds(0.5, TimerMode::Once),
+            wall_jump_cooldown_timer: Timer::from_seconds(0.1, TimerMode::Once),
 
 
             //temp_counter: 0,

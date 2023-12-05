@@ -134,13 +134,19 @@ pub struct HorizontalMover {
 
     pub current_speed: f32,
 
-    pub can_dash: bool,
-    pub is_dashing: bool,
+    pub dash_state: DashState,
     pub dash_power: f32,
     pub dashing_timer: Timer,
     pub dash_cooldown_timer: Timer,
 
     pub facing_direction: FacingDirection,
+}
+
+#[derive(Clone)]
+pub enum DashState {
+    ReadyToDash,
+    Dashing,
+    OnCooldown,
 }
 
 impl Default for HorizontalMover {
@@ -165,8 +171,7 @@ impl Default for HorizontalMover {
 
             current_speed: 0.0,
 
-            can_dash: true,
-            is_dashing: false,
+            dash_state: DashState::ReadyToDash,
             dash_power: 30000.,
             dashing_timer: Timer::from_seconds(0.2, TimerMode::Once),
             dash_cooldown_timer: Timer::from_seconds(0.5, TimerMode::Once),

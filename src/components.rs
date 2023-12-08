@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
+use std::time::Duration;
 use std::collections::HashSet;
 
 
@@ -111,6 +112,7 @@ impl FacingDirection {
 pub struct MovementBundle {
     pub horizontal_mover: HorizontalMover,
     pub vertical_mover: VerticalMover,
+    pub dasher: Dasher,
 }
 
 #[derive(Clone, Component)]
@@ -134,19 +136,59 @@ pub struct HorizontalMover {
 
     pub current_speed: f32,
 
+
+
+    pub facing_direction: FacingDirection,
+}
+#[derive(Clone, Component)]
+pub struct Dasher {
     pub dash_state: DashState,
     pub dash_power: f32,
     pub dashing_timer: Timer,
     pub dash_cooldown_timer: Timer,
-
-    pub facing_direction: FacingDirection,
 }
 
-#[derive(Clone)]
+impl Default for Dasher {
+    fn default() -> Self {
+        Dasher {
+            dash_state: DashState::ReadyToDash,
+            dash_power: 30000.,
+            dashing_timer: Timer::from_seconds(0.2, TimerMode::Once),
+            dash_cooldown_timer: Timer::from_seconds(0.5, TimerMode::Once),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum DashState {
     ReadyToDash,
-    Dashing,
-    OnCooldown,
+    Dashing(Timer),
+    OnCooldown(Timer),
+}
+
+impl Dasher {
+    pub fn transition(&mut self, duration: Duration) {
+        match &mut self.dash_state {
+            DashState::ReadyToDash => self.dash_state = DashState::Dashing(Timer::from_seconds(0.2, TimerMode::Once)),
+            DashState::Dashing(timer) => if timer.finished() { 
+                                                    self.dash_state = DashState::OnCooldown(Timer::from_seconds(0.5, TimerMode::Once));
+                                                } else { 
+                                                    timer.tick(duration);
+                                                },
+            DashState::OnCooldown(timer) => if timer.finished() {
+                                                    self.dash_state = DashState::ReadyToDash;
+                                                } else {
+                                                    timer.tick(duration);
+                                                }
+        }
+    }
+
+    pub fn is_dashing(&self) -> bool {
+        match &self.dash_state {
+            DashState::Dashing(_) => true,
+            _ => false
+        }
+    }
 }
 
 impl Default for HorizontalMover {
@@ -171,10 +213,10 @@ impl Default for HorizontalMover {
 
             current_speed: 0.0,
 
-            dash_state: DashState::ReadyToDash,
+            /* dash_state: DashState::ReadyToDash,
             dash_power: 30000.,
             dashing_timer: Timer::from_seconds(0.2, TimerMode::Once),
-            dash_cooldown_timer: Timer::from_seconds(0.5, TimerMode::Once),
+            dash_cooldown_timer: Timer::from_seconds(0.5, TimerMode::Once), */
 
             facing_direction: FacingDirection::Left,
         }

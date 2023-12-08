@@ -54,7 +54,7 @@ fn main() {
         .add_systems(Update, systems::camera::player_camera)
 
         //Movement
-        .add_systems(Update, systems::movement::horizontal_movement_no_acc)
+        .add_systems(Update, systems::movement::horizontal_movement)
         .add_systems(Update, systems::movement::horizontal_dash)
         .add_systems(Update, systems::movement::vertical_jump)
         .add_systems(Update, systems::movement::wall_jump)

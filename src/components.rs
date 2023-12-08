@@ -144,8 +144,6 @@ pub struct HorizontalMover {
 pub struct Dasher {
     pub dash_state: DashState,
     pub dash_power: f32,
-    pub dashing_timer: Timer,
-    pub dash_cooldown_timer: Timer,
 }
 
 impl Default for Dasher {
@@ -153,8 +151,6 @@ impl Default for Dasher {
         Dasher {
             dash_state: DashState::ReadyToDash,
             dash_power: 30000.,
-            dashing_timer: Timer::from_seconds(0.2, TimerMode::Once),
-            dash_cooldown_timer: Timer::from_seconds(0.5, TimerMode::Once),
         }
     }
 }

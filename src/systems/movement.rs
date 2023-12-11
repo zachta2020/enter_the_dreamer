@@ -1,81 +1,66 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use crate::components::*;
+use crate::components::movement::*;
 
 use std::time::Duration;
 
 pub fn horizontal_movement (
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
-    mut query: Query<(&mut Velocity, &mut HorizontalMover, &VerticalMover, &GroundDetection, &Dasher), With<Player>>
+    mut query: Query<(&mut Velocity, &mut Facing, &mut Runner, &VerticalMover, &GroundDetection, &Dasher), With<Player>>
 ) {
-    for (mut velocity, mut horizontal_mover, vertical_mover, ground_detection, dasher) in &mut query {
+    for (mut velocity, mut facing, mut runner, vertical_mover, ground_detection, dasher) in &mut query {
         let right = if input.pressed(KeyCode::Right) && !dasher.is_dashing() && !vertical_mover.is_wall_jumping { 
-            horizontal_mover.facing_direction = FacingDirection::Right;
+            facing.0 = FacingDirection::Right;
             1.
         } else { 0. };
         let left = if input.pressed(KeyCode::Left) && !dasher.is_dashing() && !vertical_mover.is_wall_jumping { 
-            horizontal_mover.facing_direction = FacingDirection::Left;
+            facing.0 = FacingDirection::Left;
             1. 
         } else { 0. };
         let direction: f32 = right - left;
-        
-        let horizontal_speed: f32;
-        let horizontal_acc: f32;
-        let horizontal_dec: f32;
-        let horizontal_turn: f32;
 
+        let horizontal_speed: Speed;
         if !ground_detection.on_ground { //if in the air
-            horizontal_speed = horizontal_mover.air_speed;
-            horizontal_acc = horizontal_mover.air_acc;
-            horizontal_dec = horizontal_mover.air_dec;
-            horizontal_turn = horizontal_mover.air_turn;
-        } else if input.pressed(KeyCode::ShiftLeft) || input.pressed(KeyCode::ShiftRight) { //if running
-            horizontal_speed = horizontal_mover.run_speed;
-            horizontal_acc = horizontal_mover.run_acc;
-            horizontal_dec = horizontal_mover.run_dec;
-            horizontal_turn = horizontal_mover.run_turn;
-        } else { //if walking
-            horizontal_speed = horizontal_mover.walk_speed;
-            horizontal_acc = horizontal_mover.walk_acc;
-            horizontal_dec = horizontal_mover.walk_dec;
-            horizontal_turn = horizontal_mover.walk_turn;
+            horizontal_speed = runner.air_speed;
+        } else if input.pressed(KeyCode::ShiftLeft) || input.pressed(KeyCode::ShiftRight) { //if sprinting
+            horizontal_speed = runner.sprint_speed;
+        } else { //if normal running
+            horizontal_speed = runner.run_speed;
         };
 
         let speed_change: f32;
         if direction != 0.0 {
-            if direction.signum() != horizontal_mover.current_speed.signum() { //if the player changes direction
-                speed_change = horizontal_turn;
-                //println!("Changing Direction");
+            if direction.signum() != runner.current_speed.signum() { //if the player changes direction
+                speed_change = horizontal_speed.turn;
             } else { //if the player keeps going in the same direction
-                speed_change = horizontal_acc;
-                //println!("Same Direction");
+                speed_change = horizontal_speed.accel;
             }
         } else { //slow down when the player lets go of move left and/or move right
-            speed_change = horizontal_dec;
-            //println!("Slowing Down");
+            speed_change = horizontal_speed.decel;
         }
 
         if direction == 0.0 { //if decelerating
-            if horizontal_mover.current_speed > 0.0 { //decelerating from a positive velocity
-                horizontal_mover.current_speed -= speed_change;
-                if horizontal_mover.current_speed <= 0.0 {
-                    horizontal_mover.current_speed = 0.0
+            if runner.current_speed > 0.0 { //decelerating from a positive velocity
+                runner.current_speed -= speed_change;
+                if runner.current_speed <= 0.0 {
+                    runner.current_speed = 0.0
                 }
             } else { //decelerating from a negative velocity
-                horizontal_mover.current_speed += speed_change;
-                if horizontal_mover.current_speed >= 0.0 {
-                    horizontal_mover.current_speed = 0.0
+                runner.current_speed += speed_change;
+                if runner.current_speed >= 0.0 {
+                    runner.current_speed = 0.0
                 }
             }
         } else { //if accelerating or turning
-            horizontal_mover.current_speed += direction * speed_change;
-            if horizontal_mover.current_speed.abs() >= horizontal_speed {
-                horizontal_mover.current_speed = direction * horizontal_speed;
+            runner.current_speed += direction * speed_change;
+            if runner.current_speed.abs() >= horizontal_speed.max {
+                runner.current_speed = direction * horizontal_speed.max;
             }
         }
 
-        velocity.linvel.x = horizontal_mover.current_speed * time.delta_seconds();
+        velocity.linvel.x = runner.current_speed * time.delta_seconds();
         //println!("Current Velocity: {}", velocity.linvel.x);
     }
 }
@@ -83,10 +68,10 @@ pub fn horizontal_movement (
 pub fn horizontal_dash (
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
-    mut query: Query<(&mut Velocity, &mut Dasher, &HorizontalMover), With<Player>>
+    mut query: Query<(&mut Velocity, &mut Dasher, &Facing), With<Player>>
 ) {
-    for (mut velocity, mut dasher, horizontal_mover) in &mut query {
-        let direction = if horizontal_mover.facing_direction == FacingDirection::Left { -1. } else { 1. };
+    for (mut velocity, mut dasher, facing) in &mut query {
+        let direction = if facing.0 == FacingDirection::Left { -1. } else { 1. };
         match dasher.dash_state {
             DashState::ReadyToDash => if input.just_pressed(KeyCode::ControlLeft) {
                 dasher.transition(Duration::ZERO);
@@ -123,16 +108,11 @@ pub fn vertical_jump (
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
     rapier_config: Res<RapierConfiguration>,
-    mut query: Query<(&mut Velocity, &mut VerticalMover, &mut HorizontalMover, &GroundDetection, &GravityScale), With<Player>>
+    mut query: Query<(&mut Velocity, &mut VerticalMover, &GroundDetection, &GravityScale), With<Player>>
 ) {
-    for (mut velocity, mut vertical_mover, mut horizontal_mover, ground_detection, gravity_scale) in &mut query {
+    for (mut velocity, mut vertical_mover, ground_detection, gravity_scale) in &mut query {
         if input.just_pressed(KeyCode::Space) && (ground_detection.on_ground || vertical_mover.jump_count > 0) {
             vertical_mover.jump_count -= 1;
-            if input.pressed(KeyCode::ShiftLeft) || input.pressed(KeyCode::ShiftRight) {
-                horizontal_mover.air_speed = horizontal_mover.run_speed;
-            } else {
-                horizontal_mover.air_speed = horizontal_mover.walk_speed;
-            }
 
             let jump_power = (-2. * rapier_config.gravity.y * gravity_scale.0 * vertical_mover.jump_height).sqrt();
             /* println!("Jump Power: {}", jump_power);
@@ -151,9 +131,9 @@ pub fn wall_jump (
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
     rapier_config: Res<RapierConfiguration>,
-    mut query: Query<(&mut Velocity, &mut VerticalMover, &mut HorizontalMover, &GravityScale, &GroundDetection, &WallDetection), With<Player>>
+    mut query: Query<(&mut Velocity, &mut VerticalMover, &mut Facing, &GravityScale, &GroundDetection, &WallDetection), With<Player>>
 ) {
-    for (mut velocity, mut vertical_mover, mut horizontal_mover, gravity_scale, ground_detection, wall_detection) in &mut query {
+    for (mut velocity, mut vertical_mover, mut facing, gravity_scale, ground_detection, wall_detection) in &mut query {
          //start the wall jump
         if input.just_pressed(KeyCode::Space) && vertical_mover.is_wall_sliding && vertical_mover.can_wall_jump {
             vertical_mover.is_wall_sliding = false;
@@ -161,7 +141,7 @@ pub fn wall_jump (
             vertical_mover.can_wall_jump = false;
             vertical_mover.is_wall_jumping = true;
 
-            vertical_mover.wall_jump_direction = horizontal_mover.facing_direction.get_opposite();
+            vertical_mover.wall_jump_direction = facing.0.get_opposite();
 
             vertical_mover.wall_jump_timer.reset();
 
@@ -173,8 +153,8 @@ pub fn wall_jump (
         //while wall jumping
         if vertical_mover.is_wall_jumping { 
             if !vertical_mover.wall_jump_timer.finished(){
-                if horizontal_mover.facing_direction != vertical_mover.wall_jump_direction {
-                    horizontal_mover.facing_direction = horizontal_mover.facing_direction.get_opposite();
+                if facing.0 != vertical_mover.wall_jump_direction {
+                    facing.0 = facing.0.get_opposite();
                 }
 
                 let direction = if vertical_mover.wall_jump_direction == FacingDirection::Right { 1. } else { -1. };
@@ -200,8 +180,8 @@ pub fn wall_jump (
 
         //cancel wall jump early if the player hits the ground or floor
         if vertical_mover.is_wall_jumping && (ground_detection.on_ground || (wall_detection.on_wall && (
-            (input.pressed(KeyCode::Left) && horizontal_mover.facing_direction == FacingDirection::Left) || 
-            (input.pressed(KeyCode::Right) && horizontal_mover.facing_direction == FacingDirection::Right)
+            (input.pressed(KeyCode::Left) && facing.0 == FacingDirection::Left) || 
+            (input.pressed(KeyCode::Right) && facing.0 == FacingDirection::Right)
         ))) {
             vertical_mover.is_wall_jumping = false;
             vertical_mover.wall_jump_cooldown_timer.reset();
@@ -226,12 +206,12 @@ pub fn set_jumps(
 pub fn wall_slide (
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
-    mut query: Query<(&mut Velocity, &mut VerticalMover, &WallDetection, &GroundDetection, &HorizontalMover), With<Player>>
+    mut query: Query<(&mut Velocity, &mut VerticalMover, &WallDetection, &GroundDetection, &Facing), With<Player>>
 ) {
-    for (mut velocity, mut vertical_mover, wall_detection, ground_detection, horizontal_mover) in &mut query {
+    for (mut velocity, mut vertical_mover, wall_detection, ground_detection, facing) in &mut query {
         if wall_detection.on_wall && !ground_detection.on_ground && (
-            (input.pressed(KeyCode::Left) && horizontal_mover.facing_direction == FacingDirection::Left) || 
-            (input.pressed(KeyCode::Right) && horizontal_mover.facing_direction == FacingDirection::Right)
+            (input.pressed(KeyCode::Left) && facing.0 == FacingDirection::Left) || 
+            (input.pressed(KeyCode::Right) && facing.0 == FacingDirection::Right)
         ) {
             vertical_mover.is_wall_sliding = true;
             vertical_mover.in_wall_slide_coyote_time = false;

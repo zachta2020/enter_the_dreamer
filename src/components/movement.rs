@@ -8,7 +8,8 @@ pub struct MovementBundle {
     pub runner: Runner,
     pub dasher: Dasher,
 
-    pub vertical_mover: VerticalMover,
+    pub jumper: Jumper,
+    pub wall_jumper: WallJumper,
 }
 
 #[derive(Clone, Component)]
@@ -63,7 +64,7 @@ impl Default for Runner {
         Runner {
             current_speed: 0.,
             run_speed: Speed::new(10000., 1000.0, 1000.0, 1000.0,),
-            sprint_speed: Speed::new(15000., 500.0, 1000.0, 800.0,),
+            sprint_speed: Speed::new(15000., 1000.0, 1200.0, 800.0,),
             air_speed: Speed::new( 10000., 1000.0, 1000.0, 1000.0,),
         }
     }
@@ -96,15 +97,15 @@ impl Dasher {
         match &mut self.dash_state {
             DashState::ReadyToDash => self.dash_state = DashState::Dashing(Timer::from_seconds(0.2, TimerMode::Once)),
             DashState::Dashing(timer) => if timer.finished() { 
-                                                    self.dash_state = DashState::OnCooldown(Timer::from_seconds(0.5, TimerMode::Once));
-                                                } else { 
-                                                    timer.tick(duration);
-                                                },
+                self.dash_state = DashState::OnCooldown(Timer::from_seconds(0.5, TimerMode::Once));
+            } else { 
+                timer.tick(duration);
+            },
             DashState::OnCooldown(timer) => if timer.finished() {
-                                                    self.dash_state = DashState::ReadyToDash;
-                                                } else {
-                                                    timer.tick(duration);
-                                                }
+                self.dash_state = DashState::ReadyToDash;
+            } else {
+                timer.tick(duration);
+            }
         }
     }
 
@@ -116,39 +117,20 @@ impl Dasher {
     }
 }
 
-#[derive(Clone, Component)]
-pub struct VerticalMover {
+#[derive(Component, Clone)]
+pub struct Jumper {
     pub jump_height: f32,
     pub time_to_jump_apex: f32,
     pub down_grav_mult: f32,
 
     pub jump_count: i32,
     pub max_jump_count: i32,
-
-    pub is_wall_sliding: bool,
-    pub wall_slide_speed: f32,
-    pub in_wall_slide_coyote_time: bool,
-    pub wall_slide_coyote_timer: Timer,
-
-    pub can_wall_jump: bool,
-    pub is_wall_jumping: bool,
-    pub wall_jump_direction: FacingDirection,
-    //pub wall_jump_coyote_timer: Timer,
-    pub wall_jump_timer: Timer,
-    pub wall_jump_cooldown_timer: Timer,
-
-    //pub temp_counter: i32,
 }
 
-/* pub const WALL_SLIDE_COYOTE_TIME: f32 = 0.01;
-pub const WALL_JUMP_COYOTE_TIME: f32 = 0.5;
-pub const WALL_JUMP_TIME: f32 = 0.2; */
-//pub const TEST_TIME: f32 = 0.5;
-
-impl Default for VerticalMover {
+impl Default for Jumper {
     fn default() -> Self {
         const JUMPS: i32 = 1;
-        VerticalMover { 
+        Jumper {
             //height 225000 clears 3 blocks
             jump_height: 225000.,
             time_to_jump_apex: 20.,
@@ -156,20 +138,91 @@ impl Default for VerticalMover {
 
             jump_count: JUMPS,
             max_jump_count: JUMPS,
+        }
+    }
+}
 
-            is_wall_sliding: false,
-            wall_slide_speed: 10.,
-            in_wall_slide_coyote_time: false,
-            wall_slide_coyote_timer: Timer::from_seconds(0.2, TimerMode::Once),
+impl Jumper {
+    pub fn get_jump_speed(&self) -> f32 {
+        ((4. * self.jump_height * self.jump_height) / (self.time_to_jump_apex * self.time_to_jump_apex)).sqrt()
+    }
+}
 
-            can_wall_jump: true,
-            is_wall_jumping: false,
-            wall_jump_direction: FacingDirection::Left,
-            wall_jump_timer: Timer::from_seconds(0.5, TimerMode::Once),
-            wall_jump_cooldown_timer: Timer::from_seconds(0.0, TimerMode::Once),
+#[derive(Component, Clone)]
+pub struct WallJumper {
+    pub wall_jump_state: WallJumpState,
+    pub wall_slide_speed: f32,
+    pub wall_jump_direction: FacingDirection,
+}
 
+impl Default for WallJumper {
+    fn default() -> Self {
+        WallJumper { 
+            wall_jump_state: WallJumpState::NotOnWall, 
+            wall_slide_speed: 10., 
+            wall_jump_direction: FacingDirection::Left, 
+        }
+    }
+}
 
-            //temp_counter: 0,
+#[derive(Clone, PartialEq)]
+pub enum WallJumpState {
+    NotOnWall,
+    WallSliding,
+    WallSlideCoyote(Timer),
+    WallJumping(Timer),
+}
+
+impl WallJumper {
+    pub fn transition(&mut self, duration: Duration, bool_states: (bool, bool, bool, bool)) {
+        let (pressed_jump, on_ground, on_wall, hugging_wall) = bool_states;
+        //println!("===Bool States===\nPressed Jump - {}\nOn ground - {}\nOn wall - {}\nHugging wall - {}", 
+            //pressed_jump, on_ground, on_wall, hugging_wall);
+        match &mut self.wall_jump_state {
+            WallJumpState::NotOnWall => { 
+                if on_wall && !on_ground && hugging_wall {
+                    self.wall_jump_state = WallJumpState::WallSliding;
+                    //println!("NotOnWall => WallSliding");
+                }
+            },
+
+            WallJumpState::WallSliding => if pressed_jump { //if the player presses jump during the WallSlide
+                self.wall_jump_state = WallJumpState::WallJumping(Timer::from_seconds(0.5, TimerMode::Once));
+                //println!("WallSliding => WallJumping");
+            } else if !on_ground { //if the player stops wall sliding by touching the floor
+                self.wall_jump_state = WallJumpState::WallSlideCoyote(Timer::from_seconds(0.2, TimerMode::Once));
+                //println!("WallSliding => WallSlideCoyote");
+            } else { //if the player stops wall sliding in the air
+                self.wall_jump_state = WallJumpState::NotOnWall;
+                //println!("WallSliding => NotOnWall");
+            },
+
+            WallJumpState::WallSlideCoyote(timer) => if timer.just_finished() || on_ground { //Wall Jump Coyote Timer runs out
+                self.wall_jump_state = WallJumpState::NotOnWall;
+                //println!("WallSlideCoyote => NotOnWall");
+            } else if pressed_jump { //Jump while in Coyote time
+                    self.wall_jump_state = WallJumpState::WallJumping(Timer::from_seconds(0.5, TimerMode::Once));
+                    //println!("WallSlideCoyote => WallJumping");
+            } else if on_wall && hugging_wall { //Go back to wall in Coyote time
+                    self.wall_jump_state = WallJumpState::WallSliding;
+                    //println!("WallSlideCoyote => WallSliding");
+            } else {
+                    timer.tick(duration);
+            },
+
+            WallJumpState::WallJumping(timer) => if timer.just_finished() || on_ground {
+                self.wall_jump_state = WallJumpState::NotOnWall;
+                //println!("WallJumping => NotOnWall")
+            } else {
+                timer.tick(duration);
+            },
+        }
+    }
+
+    pub fn is_wall_jumping(&self) -> bool {
+        match self.wall_jump_state {
+            WallJumpState::WallJumping(_) => true,
+            _ => false,
         }
     }
 }

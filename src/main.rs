@@ -57,13 +57,14 @@ fn main() {
         .add_systems(Update, systems::movement::horizontal_movement)
         .add_systems(Update, systems::movement::horizontal_dash)
         .add_systems(Update, systems::movement::vertical_jump)
-        .add_systems(Update, systems::movement::wall_jump)
+        //.add_systems(Update, systems::movement::wall_jump)
         .add_systems(Update, systems::movement::set_jumps)
         .add_systems(Update, systems::movement::set_player_gravity)
-        .add_systems(Update, systems::movement::wall_slide)
+        //.add_systems(Update, systems::movement::wall_slide)
+        .add_systems(Update, systems::movement::wall_slide_and_jump)
 
         .register_ldtk_int_cell::<components::WallBundle>(1)
         .register_ldtk_entity::<components::PlayerBundle>("Player")
-        .insert_resource(LevelSelection::Index(0))
+        .insert_resource(LevelSelection::Index(1))
         .run();
 }

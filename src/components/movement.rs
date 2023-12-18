@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use std::{time::Duration, thread::current};
+use std::time::Duration;
 
 #[derive(Clone, Bundle, Default)]
 pub struct MovementBundle {
@@ -221,9 +221,9 @@ impl WallJumper {
                 timer.tick(duration);
             },
 
-            WallJumpState::WallJumping(timer) => if timer.just_finished() || on_ground /* || 
+            WallJumpState::WallJumping(timer) => if timer.just_finished() || on_ground || 
                 (self.wall_jump_direction == Direction::Left && on_wall_left) || 
-                (self.wall_jump_direction == Direction::Right && on_wall_right)  */
+                (self.wall_jump_direction == Direction::Right && on_wall_right)
             {
                 self.wall_jump_state = WallJumpState::NotOnWall;
             } else {

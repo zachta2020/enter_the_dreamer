@@ -225,19 +225,37 @@ pub fn spawn_wall_sensor(
                 y: half_extents_y,
             } = cuboid.half_extents();
 
-            let detector_shape = Collider::cuboid(half_extents_x + 4.0, half_extents_y / 2.0);
+            let detector_shape_left = Collider::cuboid(2.0, half_extents_y / 2.0);
+            let detector_shape_right = Collider::cuboid(2.0, half_extents_y / 2.0);
 
-            let sensor_translation = Vec3::new(0., 0., 0.);
+            let sensor_translation_left = Vec3::new(-1. * half_extents_x, 0., 0.);
+            let sensor_translation_right = Vec3::new(half_extents_x, 0., 0.);
 
             commands.entity(entity).with_children(|builder| {
                 builder
                     .spawn_empty()
                     .insert(ActiveEvents::COLLISION_EVENTS)
-                    .insert(detector_shape)
+                    .insert(detector_shape_left)
                     .insert(Sensor)
-                    .insert(Transform::from_translation(sensor_translation))
+                    .insert(Transform::from_translation(sensor_translation_left))
                     .insert(GlobalTransform::default())
                     .insert(WallSensor {
+                        direction: movement::Direction::Left,
+                        wall_detection_entity: entity,
+                        intersecting_wall_entities: HashSet::new(),
+                    });
+            });
+
+            commands.entity(entity).with_children(|builder| {
+                builder
+                    .spawn_empty()
+                    .insert(ActiveEvents::COLLISION_EVENTS)
+                    .insert(detector_shape_right)
+                    .insert(Sensor)
+                    .insert(Transform::from_translation(sensor_translation_right))
+                    .insert(GlobalTransform::default())
+                    .insert(WallSensor {
+                        direction: movement::Direction::Right,
                         wall_detection_entity: entity,
                         intersecting_wall_entities: HashSet::new(),
                     });

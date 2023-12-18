@@ -80,13 +80,20 @@ pub fn wall_detection(
     }
 }
 
-pub fn update_on_wall(
+pub fn update_on_wall (
     mut wall_detectors: Query<&mut WallDetection>,
     wall_sensors: Query<&WallSensor, Changed<WallSensor>>,
 ) {
     for sensor in &wall_sensors {
         if let Ok(mut wall_detection) = wall_detectors.get_mut(sensor.wall_detection_entity) {
-            wall_detection.on_wall = !sensor.intersecting_wall_entities.is_empty();
+            match sensor.direction {
+                movement::Direction::Left => { 
+                    wall_detection.on_wall_left = !sensor.intersecting_wall_entities.is_empty();
+                }, 
+                movement::Direction::Right => {
+                    wall_detection.on_wall_right = !sensor.intersecting_wall_entities.is_empty();
+                }
+            }
         }
     }
 }

@@ -8,30 +8,14 @@ use std::collections::HashSet;
 pub mod movement;
 use crate::components::movement::*;
 
-
-/* pub const DEFAULT_HORIZONTAL_WALK: f32 = 10000.;
-pub const DEFAULT_HORIZONTAL_RUN: f32 = 15000.;
-pub const DEFAULT_HORIZONTAL_DASH: f32 = 30000.; */
-
-/* pub const DEFAULT_JUMP_COUNT: i32 = 1;
-pub const DEFAULT_VERTICAL_JUMP: f32 = 30000.; */
-
 #[derive(Component, Default)]
 pub struct PrimaryCamera;
-
-/* #[derive(Component, Default)]
-pub struct CameraCoords {
-    pub x: f32,
-    pub y: f32,
-} */
 
 #[derive(Bundle, Default)]
 pub struct PrimaryCameraBundle {
     pub camera_2d: Camera2dBundle,
     pub primary_camera: PrimaryCamera
 }
-
-
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Component)]
 pub struct Player;
@@ -108,11 +92,13 @@ pub struct GroundSensor {
 
 #[derive(Clone, Default, Component)]
 pub struct WallDetection {
-    pub on_wall: bool,
+    pub on_wall_left: bool,
+    pub on_wall_right: bool,
 }
 
 #[derive(Component)]
 pub struct WallSensor {
+    pub direction: movement::Direction,
     pub wall_detection_entity: Entity,
     pub intersecting_wall_entities: HashSet<Entity>,
 }

@@ -4,22 +4,26 @@ use crate::components::*;
 use crate::components::movement::*;
 
 use std::time::Duration;
+use crate::components::movement::Direction as Direction;
 
 pub fn horizontal_movement (
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
-    mut query: Query<(&mut Velocity, &mut Facing, &mut Runner, &WallJumper, &GroundDetection, &Dasher), With<Player>>
+    mut query: Query<(&mut Velocity, &mut FacingDirection, &mut Runner, &WallJumper, &GroundDetection, &Dasher), With<Player>>
 ) {
-    for (mut velocity, mut facing, mut runner, wall_jumper, ground_detection, dasher) in &mut query {
-        let right = if input.pressed(KeyCode::Right) && !dasher.is_dashing() && !wall_jumper.is_wall_jumping() { 
-            facing.0 = FacingDirection::Right;
-            1.
-        } else { 0. };
-        let left = if input.pressed(KeyCode::Left) && !dasher.is_dashing() && !wall_jumper.is_wall_jumping() { 
-            facing.0 = FacingDirection::Left;
-            1. 
-        } else { 0. };
-        let direction: f32 = right - left;
+    for (mut velocity, mut facing_direction, mut runner, wall_jumper, ground_detection, dasher) in &mut query {
+        let mut direction: f32 = 0.;
+        if !dasher.is_dashing() && !wall_jumper.is_wall_jumping() {
+            if input.pressed(KeyCode::Right) {
+                facing_direction.0 = Direction::Right;
+                direction = 1.;
+            } else if input.pressed(KeyCode::Left) {
+                facing_direction.0 = Direction::Left;
+                direction = -1.;
+            } else {
+                direction = 0.;
+            }
+        }
 
         let horizontal_speed: Speed;
         if !ground_detection.on_ground { //if in the air
@@ -73,10 +77,10 @@ pub fn horizontal_movement (
 pub fn horizontal_dash (
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
-    mut query: Query<(&mut Velocity, &mut Dasher, &Facing), With<Player>>
+    mut query: Query<(&mut Velocity, &mut Dasher, &FacingDirection), With<Player>>
 ) {
     for (mut velocity, mut dasher, facing) in &mut query {
-        let direction = if facing.0 == FacingDirection::Left { -1. } else { 1. };
+        let direction = if facing.0 == Direction::Left { -1. } else { 1. };
         match dasher.dash_state {
             DashState::ReadyToDash => if input.just_pressed(KeyCode::ControlLeft) {
                 dasher.transition(Duration::ZERO);
@@ -117,24 +121,7 @@ pub fn vertical_jump (
     for (mut velocity, mut jumper, ground_detection) in &mut query {
         if input.just_pressed(KeyCode::Space) && (ground_detection.on_ground || jumper.jump_count > 0) {
             jumper.jump_count -= 1;
-            if velocity.linvel.y > 0. { //jump while rising
-                let val = jumper.get_jump_speed() - velocity.linvel.y;
-                let result = if val > 0.0 {
-                    val
-                } else {
-                    0.0
-                };
-
-                println!("Jump Speed - {}", result);
-
-                velocity.linvel.y = result * time.delta_seconds();
-            } else if velocity.linvel.y < 0. { //jump while falling
-                println!("Jump Speed - {}", jumper.get_jump_speed() + velocity.linvel.y);
-                velocity.linvel.y = (jumper.get_jump_speed() + velocity.linvel.y.abs()) * time.delta_seconds();
-            } else { //jump from ground
-                println!("Jump Speed - {}", jumper.get_jump_speed());
-                velocity.linvel.y = jumper.get_jump_speed() * time.delta_seconds();
-            }
+            velocity.linvel.y = jumper.get_jump_speed(velocity.linvel.y, 1.0) * time.delta_seconds();
         }
     }
 }
@@ -154,45 +141,62 @@ pub fn set_jumps(
 pub fn wall_slide_and_jump (
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
-    mut query: Query<(&mut Velocity, &mut WallJumper, &mut Facing, &mut Jumper, &GroundDetection, &WallDetection), With<Player>>
+    mut query: Query<(&mut Velocity, &mut WallJumper, &mut FacingDirection, &mut Jumper, &GroundDetection, &WallDetection), With<Player>>
 ) {
     for (mut velocity, mut wall_jumper, mut facing, mut jumper, ground_detection, wall_detection) in &mut query {
-        let hugging_wall: bool = wall_detection.on_wall && (
-            (input.pressed(KeyCode::Left) && facing.0 == FacingDirection::Left) || 
-            (input.pressed(KeyCode::Right) && facing.0 == FacingDirection::Right)
-        );
 
-        let bool_states = (input.just_pressed(KeyCode::Space), ground_detection.on_ground, wall_detection.on_wall, hugging_wall);
+        let input_states = (input.just_pressed(KeyCode::Space), input.pressed(KeyCode::Left), input.pressed(KeyCode::Right));
+        let detection_states = (ground_detection.on_ground, wall_detection.on_wall_left, wall_detection.on_wall_right);
+
         match wall_jumper.wall_jump_state {
             WallJumpState::NotOnWall => {
-                wall_jumper.transition(Duration::ZERO, bool_states);
+                wall_jumper.transition(Duration::ZERO, input_states, detection_states);
             },
             WallJumpState::WallSliding => {
                 if velocity.linvel.y < -1. * wall_jumper.wall_slide_speed {
                     velocity.linvel.y = -1. * wall_jumper.wall_slide_speed;  
                 }
                 //println!("Bool states - {:?}, Wall Slide", bool_states);
-                wall_jumper.wall_jump_direction = facing.0.get_opposite();
-                wall_jumper.transition(Duration::ZERO, bool_states);
+                wall_jumper.transition(Duration::ZERO, input_states, detection_states);
+
+                if wall_jumper.is_wall_jumping() {
+                    wall_jumper.wall_jump_direction = facing.0.get_opposite();
+                }
             },
             WallJumpState::WallSlideCoyote(_) => {
                 //println!("Bool states - {:?}, Wall Slide Coyote", bool_states);
-                wall_jumper.transition(time.delta(), bool_states);
+                wall_jumper.transition(time.delta(), input_states, detection_states);
+
+                if wall_jumper.is_wall_jumping() {
+                    wall_jumper.wall_jump_direction = facing.0.get_opposite();
+                }
             },
             WallJumpState::WallJumping(_) => {
                 if facing.0 != wall_jumper.wall_jump_direction {
                     facing.0 = facing.0.get_opposite();
                     //println!("Flip!");
                     jumper.jump_count = 0;
-                    velocity.linvel.y = jumper.get_jump_speed() * time.delta_seconds();
+
+                    let wall_jump_speed = jumper.get_jump_speed(velocity.linvel.y, 1.25);
+                    velocity.linvel.y = wall_jump_speed * time.delta_seconds();
                 }
 
-                let direction = if wall_jumper.wall_jump_direction == FacingDirection::Right { 1. } else { -1. };
+                let direction = if wall_jumper.wall_jump_direction == Direction::Right { 1. } else { -1. };
+
                 velocity.linvel.x = direction * 6000. * time.delta_seconds();
 
                 //println!("Wall Jump!");
-                wall_jumper.transition(time.delta(), bool_states);
+                wall_jumper.transition(time.delta(), input_states, detection_states);
             },
         }
     }
 }
+
+/* pub fn debug (
+    //wall_detection_query: Query<&WallDetection, Changed<WallDetection>>
+    wall_jumper_query: Query<&WallJumper>
+) {
+    for wall_jumper in &wall_jumper_query {
+        println!("Wall Jump State - {:?}", wall_jumper.wall_jump_state);
+    }
+} */

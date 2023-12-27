@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::components::movement::Direction;
+use std::f32::{INFINITY, NEG_INFINITY};
 use std::time::Duration;
 
 pub fn horizontal_movement(
@@ -30,18 +31,39 @@ pub fn horizontal_movement(
         dasher,
     ) in &mut query
     {
-        let mut direction: f32 = 0.;
-        if !dasher.is_dashing() && !wall_jumper.is_wall_jumping() {
+        use DashState::*;
+        use WallJumpState::*;
+
+        // ORIGINAL
+        // let mut direction: f32 = 0.;
+        // if !dasher.is_dashing() && !wall_jumper.is_wall_jumping() {
+        //     if input.pressed(KeyCode::Right) {
+        //         facing_direction.0 = Direction::Right;
+        //         direction = 1.;
+        //     } else if input.pressed(KeyCode::Left) {
+        //         facing_direction.0 = Direction::Left;
+        //         direction = -1.;
+        //     } else {
+        //         direction = 0.;
+        //     }
+        // }
+
+        // NEW
+        let direction: f32 = if let (Dashing(_), WallJumping(_)) =
+            (&dasher.dash_state, &wall_jumper.wall_jump_state)
+        {
             if input.pressed(KeyCode::Right) {
                 facing_direction.0 = Direction::Right;
-                direction = 1.;
+                1.
             } else if input.pressed(KeyCode::Left) {
                 facing_direction.0 = Direction::Left;
-                direction = -1.;
+                -1.
             } else {
-                direction = 0.;
+                0.0
             }
-        }
+        } else {
+            0.0
+        };
 
         let horizontal_speed: Speed;
         if !ground_detection.on_ground {
@@ -61,42 +83,77 @@ pub fn horizontal_movement(
             horizontal_speed = runner.run_speed;
         };
 
-        let speed_change: f32;
-        if direction != 0.0 {
-            if direction.signum() != runner.current_speed.signum() {
-                //if the player changes direction
-                speed_change = horizontal_speed.turn;
-            } else {
-                //if the player keeps going in the same direction
-                speed_change = horizontal_speed.accel;
-            }
-        } else {
-            //slow down when the player lets go of move left and/or move right
-            speed_change = horizontal_speed.decel;
-        }
+        // ORIGINAL
+        // let speed_change: f32;
+        // if direction != 0.0 {
+        //     if direction.signum() != runner.current_speed.signum() {
+        //         //if the player changes direction
+        //         speed_change = horizontal_speed.turn;
+        //     } else {
+        //         //if the player keeps going in the same direction
+        //         speed_change = horizontal_speed.accel;
+        //     }
+        // } else {
+        //     //slow down when the player lets go of move left and/or move right
+        //     speed_change = horizontal_speed.decel;
+        // }
 
-        if direction == 0.0 {
-            //if decelerating
-            if runner.current_speed > 0.0 {
-                //decelerating from a positive velocity
-                runner.current_speed -= speed_change;
-                if runner.current_speed <= 0.0 {
-                    runner.current_speed = 0.0
-                }
-            } else {
-                //decelerating from a negative velocity
-                runner.current_speed += speed_change;
-                if runner.current_speed >= 0.0 {
-                    runner.current_speed = 0.0
-                }
-            }
-        } else {
-            //if accelerating or turning
-            runner.current_speed += direction * speed_change;
-            if runner.current_speed.abs() >= horizontal_speed.max {
-                runner.current_speed = direction * horizontal_speed.max;
-            }
-        }
+        // IDIOMATIC IF ELSE
+        // let speed_change = if direction == 0 {
+        //     // slow down when the player lets go of move left and/or move right
+        //     horizontal_speed.decel
+        // } else {
+        //     if direction.signum() != runner.current_speed.signum() as i32 {
+        //         // if the player changes direction
+        //         horizontal_speed.turn
+        //     } else {
+        //         // if the player keeps going in the same direction
+        //         horizontal_speed.accel
+        //     }
+        // };
+
+        // NEW
+        let is_stopping = direction == 0.;
+        let is_turning_around = direction.signum() != runner.current_speed.signum();
+        let speed_change = direction
+            * match (is_stopping, is_turning_around) {
+                (true, _) => horizontal_speed.decel,
+                (_, true) => horizontal_speed.turn,
+                (_, false) => horizontal_speed.accel,
+            };
+
+        // ORIGINAL
+        // if direction == 0.0 {
+        //     //if decelerating
+        //     if runner.current_speed > 0.0 {
+        //         //decelerating from a positive velocity
+        //         runner.current_speed -= speed_change;
+        //         if runner.current_speed <= 0.0 {
+        //             runner.current_speed = 0.0
+        //         }
+        //     } else {
+        //         //decelerating from a negative velocity
+        //         runner.current_speed += speed_change;
+        //         if runner.current_speed >= 0.0 {
+        //             runner.current_speed = 0.0
+        //         }
+        //     }
+        // } else {
+        //     //if accelerating or turning
+        //     runner.current_speed += direction * speed_change;
+        //     if runner.current_speed.abs() >= horizontal_speed.max {
+        //         runner.current_speed = direction * horizontal_speed.max;
+        //     }
+        // }
+
+        // NEW
+        let bounds = match (is_stopping, direction as i32) {
+            (true, -1) => (0.0, INFINITY),
+            (true, 1) => (NEG_INFINITY, 0.0),
+            _ => (-horizontal_speed.max, horizontal_speed.max),
+        };
+        runner.current_speed =
+            (runner.current_speed + speed_change).clamp(bounds.0, bounds.1);
 
         velocity.linvel.x = runner.current_speed * time.delta_seconds();
         //println!("Current Velocity: {}", velocity.linvel.x);

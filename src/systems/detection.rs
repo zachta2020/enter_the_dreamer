@@ -41,7 +41,9 @@ pub fn update_on_ground(
     ground_sensors: Query<&GroundSensor, Changed<GroundSensor>>,
 ) {
     for sensor in &ground_sensors {
-        if let Ok(mut ground_detection) = ground_detectors.get_mut(sensor.ground_detection_entity) {
+        if let Ok(mut ground_detection) =
+            ground_detectors.get_mut(sensor.ground_detection_entity)
+        {
             ground_detection.on_ground = !sensor.intersecting_ground_entities.is_empty();
         }
     }
@@ -80,18 +82,22 @@ pub fn wall_detection(
     }
 }
 
-pub fn update_on_wall (
+pub fn update_on_wall(
     mut wall_detectors: Query<&mut WallDetection>,
     wall_sensors: Query<&WallSensor, Changed<WallSensor>>,
 ) {
     for sensor in &wall_sensors {
-        if let Ok(mut wall_detection) = wall_detectors.get_mut(sensor.wall_detection_entity) {
+        if let Ok(mut wall_detection) =
+            wall_detectors.get_mut(sensor.wall_detection_entity)
+        {
             match sensor.direction {
-                movement::Direction::Left => { 
-                    wall_detection.on_wall_left = !sensor.intersecting_wall_entities.is_empty();
-                }, 
+                movement::Direction::Left => {
+                    wall_detection.on_wall_left =
+                        !sensor.intersecting_wall_entities.is_empty();
+                }
                 movement::Direction::Right => {
-                    wall_detection.on_wall_right = !sensor.intersecting_wall_entities.is_empty();
+                    wall_detection.on_wall_right =
+                        !sensor.intersecting_wall_entities.is_empty();
                 }
             }
         }

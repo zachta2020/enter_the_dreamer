@@ -1,7 +1,6 @@
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
-
+use bevy_rapier2d::prelude::*;
 
 use std::collections::HashSet;
 
@@ -14,7 +13,7 @@ pub struct PrimaryCamera;
 #[derive(Bundle, Default)]
 pub struct PrimaryCameraBundle {
     pub camera_2d: Camera2dBundle,
-    pub primary_camera: PrimaryCamera
+    pub primary_camera: PrimaryCamera,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Component)]
